@@ -3,26 +3,32 @@ var lessEngine = require("less");
 
 exports.instantiate = css.instantiate;
 
-exports.translate = function(load) {
-	var pathParts = (load.address+'').split('/');
-		pathParts[pathParts.length - 1] = ''; // Remove filename
+var options = steal.config('lessOptions') || {};
 
-	var paths = [];
-	if (typeof window !== 'undefined') {
-		pathParts = (load.address+'').split('/');
+// default optimization value.
+options.optimization |= lessEngine.optimization;
+
+exports.translate = function(load) {
+
+	// paths option is used only in node.js
+	if (typeof window === 'undefined') {
+
+		var sep = (load.address + '').indexOf('\\') > 0 ? '\\' : '/' // determine path separator
+
+		var pathParts = (load.address +'' ).split(sep);
 		pathParts[pathParts.length - 1] = ''; // Remove filename
-		paths = [pathParts.join('/')];
+		// allow to have custom paths in options and add path
+		options.paths = (options.paths || []).concat(pathParts.join(sep));
 	}
 	return new Promise(function(resolve, reject){
-		new (lessEngine.Parser)({
-			optimization: lessEngine.optimization,
-			paths: [pathParts.join('/')],
-			filename: load.address
-		}).parse(load.source, function (e, root) {
+
+
+		var Parser = lessEngine.Parser;
+		new Parser(options).parse(load.source, function (e, root) {
 			if(e){
 				reject(e);
 			} else {
-				resolve(root.toCSS());
+				resolve(root.toCSS(options));
 			}
 		});
 	});
